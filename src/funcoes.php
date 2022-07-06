@@ -5,6 +5,13 @@ namespace SRC;
 class Funcoes
 {
 	const ANOS_POR_SECULO = 100;
+	const HABILITAR_REGISTRO_DEPURAÇÃO = false;
+
+	public static function RegistroDbg(string $registro) {
+		if (self::HABILITAR_REGISTRO_DEPURAÇÃO) {
+			echo($registro);
+		}
+	}
 
 	/*
 
@@ -175,54 +182,186 @@ class Funcoes
 
 	 * */
 	public function SequenciaCrescente(array $arr): bool {
-		$primeiroValor = true;
-		$valorAnterior = 0;
-
 		$contagemValores = count($arr);
-		$contagemRemocoes = 0;
 
-		$cases = '';
+		$sequencias = [];
+		$seqInicio = 0;
+
+		// Registrar na saída padrão
+		$arrStr = "[";
+		foreach ($arr as $valor) { $arrStr .= (strlen($arrStr) == 1 ? '' : ', ') . $valor; };
+		$arrStr .= "]";
+
+		self::RegistroDbg("\n------- ( >= Input Arr.: " . $arrStr . " ) -------\n");
 
 		foreach ($arr as $indice => $valor) {
-			if (gettype($valor) != "integer") {
-				return false;
-			}
-
-			$primeiroValor = ($indice == 0);
+			self::RegistroDbg("\nValor.: '" . $valor . "'");
 			$ultimoValor = ($indice == ($contagemValores - 1));
 
-			if (!$primeiroValor) {
-				$valorAnterior = $arr[$indice - 1];
-			}
-
-			$segundoValor = ($indice == 1);
+			self::RegistroDbg("@Idx: " . $indice . "\n@SeqStart: " . $seqInicio);
 
 			if (!$ultimoValor) {
+				self::RegistroDbg("@!last");
+
 				$proximoValor = $arr[$indice + 1];
+				self::RegistroDbg("\t\tPróximo Valor.: '" . $proximoValor . "'");
 
-				if ($valor > $proximoValor) {
-					++$contagemRemocoes;
+				if ($valor >= $proximoValor) {
+					$valorInicio = $arr[$seqInicio];
+					self::RegistroDbg("\n\t Seq. Found: [" . $seqInicio . "(" . $valorInicio . ") - " . $indice . "(" . $valor . ")]");
 
-					if ($segundoValor && isset($valorAnterior) && $valorAnterior == $proximoValor) {
-						++$contagemRemocoes;
-					}
-				} else if ($valor == $proximoValor) {
-					++$contagemRemocoes;
+					$sequencias[] = [
+						$seqInicio, $indice, $valor, $proximoValor
+					];
+					$seqInicio = $indice + 1;
 				}
-			}
+			} else {
+				// A última sequência foi formada com o elemento anterior ao final ..
+				// .. então essa é uma nova sequência de um único elemento.
 
-			$penultimoValor = ($indice == $contagemValores - 2);
+				// Uma vez que $seqInicio começa em 0, isso será verdade também para sequências
+				// .. de valor único. e.g.: [1], [4], [150]
+				$valorInicio = $arr[$seqInicio];
 
-			if (!$primeiroValor && !$ultimoValor && !$segundoValor && !$penultimoValor) {
-				$valorAnterior2 = $arr[$indice - 2];
-				$proximoValor2 = $arr[$indice - 2];
-
-				if ($valorAnterior > $valor && $valor < $proximoValor) {
-					++$contagemRemocoes;
-				}
+				self::RegistroDbg("\n\t Seq. Found: [" . $seqInicio . "(" . $valorInicio . ") - " . $indice . "(" . $valor . ")]");
+				$sequencias[] = [
+					$seqInicio, $indice, $valorInicio, $valor
+				];
 			}
 		}
 
-		return ($contagemRemocoes <= 1);
+		self::RegistroDbg("\n\n#Seq.: " . count($sequencias));
+
+		$totalSequencias = count($sequencias);
+		if ($totalSequencias == 1) {
+			return true;
+		}
+
+		$remocoesNecessarias = 0;
+		$indiceChecagemDireita = 0;
+
+		foreach ($sequencias as $indice => $sequencia) {
+			$ultimaSequencia = ($indice == ($totalSequencias - 1));
+
+			if ($ultimaSequencia) {
+				// Devido a lógica de checagem utilizada a última sequência já terá ..
+				// .. sido trabalhada quando o loop chegar no índice da mesma
+				self::RegistroDbg("\n#SEQ.: [" . $sequencia[0] . ', ' . $sequencia[1] . ', ' . $sequencia[2] . ', ' . $sequencia[3] . "]");
+				break;
+			}
+
+			self::RegistroDbg("\n+SEQ.: [" . $sequencia[0] . ', ' . $sequencia[1] . ', ' . $sequencia[2] . ', ' . $sequencia[3] . "]");
+
+			$sequenciaInicioIndice = $sequencia[0];
+			$sequenciaFimIndice = $sequencia[1];
+
+			$elementosSequencia = ($sequenciaFimIndice - $sequenciaInicioIndice);
+
+			if ($elementosSequencia == 0) {
+				// Nesse caso o elemento apenas um elemento existe e retirar o mesmo ..
+				// .. é a melhor escolha
+				++$remocoesNecessarias;
+				continue;
+			}
+
+			if ($sequenciaFimIndice <= $indiceChecagemDireita) {
+				// Em caso de já termos checado todas os valores dessa sequência ..
+				// .. durante uma iteração anterior
+				continue;
+			}
+
+			// Caso não seja a última sequência vamos checar quantos valores a serem ..
+			// .. removidos até que uma continuidade crescente possa ser alcançada
+			$proximaSequencia = $sequencias[$indice + 1];
+			$proximaSequenciaInicio = $proximaSequencia[2];
+			$proximaSequenciaFim = $proximaSequencia[3];
+
+			// Definir por qual sequencia começar a verificação tentando preservar a maior delas
+			$elementosProximaSequencia = ($proximaSequencia[1] - $proximaSequencia[0]);
+			$prioridadeAEsquerda = ($elementosSequencia > $elementosProximaSequencia);
+
+			self::RegistroDbg(",  [<>]Prioridade: " . ($prioridadeAEsquerda ? "<" : ">"));
+
+			if ($prioridadeAEsquerda) {
+				if ($elementosProximaSequencia == 0) {
+					// A próxima sequência tem apenas 1 elemento, a melhor estratégia ..
+					// .. seria a de dropar ela
+					++$remocoesNecessarias;
+					continue;
+				}
+
+				if ($arr[$sequenciaFimIndice - 1] < $proximaSequenciaInicio) {
+					// Caso removessemos o último elemento da sequência atual procederia ..
+					// .. como uma ordem crescente
+					++$remocoesNecessarias;
+					++$indiceChecagemDireita;
+					continue;
+				}
+
+				$sequenciaFimValor = $arr[$sequenciaFimIndice];
+				$inicioChecagemIndice = max($proximaSequencia[0], $indiceChecagemDireita);
+
+				// Checar por elementos da próxima sequência que possam ser removidos
+				for ($indiceValor = $inicioChecagemIndice; $indiceValor <= $proximaSequencia[1]; ++$indiceValor) {
+
+					$valorN = $arr[$indiceValor];
+					$indiceChecagemDireita = $indiceValor;
+
+					if ($valorN <= $sequenciaFimValor) {
+						// Valor duplicado ou menor que a última sequência, marcar remoção e ..
+						// .. continuar checando
+						++$remocoesNecessarias;
+						continue;
+					}
+
+					// O valor é maior, então não precisa ser removido
+					break;
+				}
+			} else {
+				// Priorizar a próxima sequência a direita, tentando remover os valores ..
+				// .. da sequência a esquerda
+
+				if ($elementosProximaSequencia == 0) {
+					// Nesse caso o elemento inicial seria menor, e ambos teriam ..
+					// .. apenas 1 elemento, então o melhor é contar o drop e prosseguir
+					++$remocoesNecessarias;
+					continue;
+				}
+
+				if ($arr[$proximaSequencia[0] + 1] > $arr[$sequenciaFimIndice]) {
+					// Caso removessemos o primeiro elemento da próxima sequência uma ordem ..
+					// .. crescente seria estabelecida
+					++$remocoesNecessarias;
+					continue;
+				}
+
+				$fimChecagemIndice = max($sequenciaInicioIndice, $indiceChecagemDireita);
+
+				// Checar por elementos da sequência atual que possam ser removidos
+				for ($indiceValor = $sequenciaFimIndice; $indiceValor >= $fimChecagemIndice; --$indiceValor) {
+
+					$valorN = $arr[$indiceValor];
+
+					if ($valorN >= $proximaSequenciaInicio) {
+						// Valor duplicado ou maior que o próximo valor da próxima sequência ..
+						// .. marcar remoção e continuar checando
+						++$remocoesNecessarias;
+						continue;
+					}
+
+					// O valor é menor, então não precisa ser removido
+					break;
+				}
+
+				// Como iremos checar no minímo até o fim dessa sequência vamos atualizar ..
+				// .. o índice que mede o quão longe já checamos
+				$indiceChecagemDireita = $sequenciaFimIndice;
+			}
+		}
+
+		self::RegistroDbg("\n\n#Remoções.: " . $remocoesNecessarias);
+		self::RegistroDbg("\n---------------- [::] ----------------\n");
+
+		return ($remocoesNecessarias <= 1);
 	}
 }

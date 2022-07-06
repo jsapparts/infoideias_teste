@@ -36,4 +36,19 @@ class FuncoesSequenciaCrescenteTest extends TestCase
 
 		$this->assertEquals(true, $funcoes->SequenciaCrescente([3, 5, 67, 98, 3]));
 	}
+
+	public function testSequenciaCrescenteExtra(): void {
+		$funcoes = new SRC\Funcoes();
+
+		$this->assertEquals(true, $funcoes->SequenciaCrescente([123, -17, -5, 1, 2, 3, 12, 43, 45]));
+		$this->assertEquals(false, $funcoes->SequenciaCrescente([1, 2 , 3, 8, 9, 11, 14, 20, 4, 8, 12, 40]));
+		$this->assertEquals(false, $funcoes->SequenciaCrescente([1, 2 , 3, 8, 9, 4, 11, 14, 20, 4, 8, 12, 40]));
+		$this->assertEquals(false, $funcoes->SequenciaCrescente([1, 2, 3, 4, 3, 2, 6, 7, 8, 12]));
+		$this->assertEquals(false, $funcoes->SequenciaCrescente([1, 2, 3, 4, 2, 3, 6, 7, 8, 12]));
+		$this->assertEquals(false, $funcoes->SequenciaCrescente([1, 1, 1, 2]));
+
+		$this->assertEquals(false, $funcoes->SequenciaCrescente([-4, -3, -2, -5, 2, 4, 1]));
+
+		$this->assertEquals(false, $funcoes->SequenciaCrescente([994, 991, 991, 98, 100, 10002, -1000]));
+	}
 }
